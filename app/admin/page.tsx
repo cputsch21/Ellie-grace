@@ -1,0 +1,22 @@
+import type { Metadata } from "next";
+import { isAuthed } from "@/lib/auth";
+import { listOrders } from "@/lib/orders";
+import AdminLogin from "./AdminLogin";
+import AdminDashboard from "./AdminDashboard";
+
+export const metadata: Metadata = {
+  title: "Orders — Ellie & Grace",
+  robots: { index: false, follow: false },
+};
+
+// Always read fresh — never cache the orders list.
+export const dynamic = "force-dynamic";
+
+export default async function AdminPage() {
+  if (!(await isAuthed())) {
+    return <AdminLogin />;
+  }
+
+  const orders = await listOrders({ includeDeleted: true });
+  return <AdminDashboard initialOrders={orders} />;
+}
