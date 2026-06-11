@@ -19,7 +19,7 @@ export default function Hero() {
 
           <p className="mx-auto mt-5 max-w-md text-lg leading-relaxed text-slate-600 lg:mx-0">
             Bracelets, keychains, chokers, rings &amp; one-of-a-kind custom
-            creations &mdash; all made by hand by two sisters who love rainbows,
+            creations &mdash; all made by hand by two cousins who love rainbows,
             hearts &amp; flowers.
           </p>
 

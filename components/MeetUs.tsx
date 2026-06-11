@@ -9,7 +9,7 @@ export default function MeetUs() {
           Ellie &amp; Grace
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-slate-600">
-          We&rsquo;re two sisters who love pink, yellow, purple &amp; blue
+          We&rsquo;re two cousins who love pink, yellow, purple &amp; blue
           &mdash; plus rainbows, hearts, and flowers. We make every bracelet,
           keychain, choker &amp; ring by hand, and we&rsquo;re saving up for a
           big dream: building a real business of our own one day.
