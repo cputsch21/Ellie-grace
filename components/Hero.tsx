@@ -1,7 +1,7 @@
 // The big picture at the top of the page.
 // When the cartoon of the girls is ready, drop the file into the `public`
 // folder and change the line below to its name (for example "/hero.png").
-const HERO_IMAGE = "/hero-placeholder.svg";
+const HERO_IMAGE = "/hero.jpg";
 
 export default function Hero() {
   return (
@@ -48,8 +48,8 @@ export default function Hero() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={HERO_IMAGE}
-              alt="Cartoon of Ellie and Grace with a big rainbow and their handmade bracelets"
-              className="mx-auto w-full max-w-xl drop-shadow-[0_24px_40px_rgba(139,77,255,0.18)]"
+              alt="Cartoon of Ellie and Grace at their rainbow loom stand with a big rainbow and their handmade bracelets"
+              className="mx-auto w-full max-w-xl rounded-[2.25rem] shadow-lift ring-4 ring-white"
             />
           </div>
         </div>
