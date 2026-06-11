@@ -1,6 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { createOrder, type OrderItem } from "@/lib/orders";
+import { sendOrderEmail } from "@/lib/email";
 import { PRODUCTS_BY_ID } from "@/lib/products";
 
 export type PlaceOrderInput = {
@@ -67,6 +69,14 @@ export async function placeOrderAction(
     note,
     items,
     total,
+  });
+
+  // Send the heads-up email after the buyer gets their confirmation, so
+  // placing an order stays instant even if email is slow.
+  after(() => {
+    sendOrderEmail(order).catch((err) =>
+      console.error("Order notification email failed:", err),
+    );
   });
 
   return {
