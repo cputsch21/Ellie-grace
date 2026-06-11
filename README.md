@@ -56,14 +56,15 @@ saved to a local file (`.data/orders.json`) so you can test without a database.
 
 ## How orders are stored in production
 
-When the site is live on Vercel, orders are saved in a database connected to
-the project (look for a `DATABASE_URL` setting). The orders table is created
-automatically the first time someone places an order — no setup needed.
+When the site is live on Vercel, every order is saved as its own file in a
+**private** Vercel Blob store connected to the project. Private means only the
+website can read them — phone numbers are never exposed publicly. No setup is
+needed; it just works once the store is connected.
 
 ## Settings used on Vercel
 
-| Setting          | What it's for                                    |
-| ---------------- | ------------------------------------------------ |
-| `ADMIN_PASSWORD` | The password for the private `/admin` page       |
-| `ADMIN_SECRET`   | A long random string that keeps the login secure |
-| `DATABASE_URL`   | Added automatically when you connect a database  |
+| Setting                 | What it's for                                        |
+| ----------------------- | ---------------------------------------------------- |
+| `ADMIN_PASSWORD`        | The password for the private `/admin` page           |
+| `ADMIN_SECRET`          | A long random string that keeps the login secure     |
+| `BLOB_READ_WRITE_TOKEN` | Added automatically when the orders store is connected |

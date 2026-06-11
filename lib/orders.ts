@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { get, list, put } from "@vercel/blob";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -30,60 +30,53 @@ export type NewOrder = {
   total: number;
 };
 
-// When a database is connected (on Vercel) we use it. Locally, with no database,
-// we fall back to a simple file so everything still works while developing.
-const connectionString =
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  process.env.DATABASE_URL_UNPOOLED ||
-  "";
-const usingDb = connectionString.length > 0;
+// In production on Vercel, orders live in a private Blob store (one file per
+// order, so two people ordering at once can never clash). Locally, with no
+// store connected, we fall back to a simple file so development still works.
+const useBlob = Boolean(
+  process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN,
+);
 
-let _sql: ReturnType<typeof neon> | null = null;
-let _ready: Promise<void> | null = null;
+const PREFIX = "orders/";
+const keyFor = (id: string) => `${PREFIX}${id}.json`;
 
-function db() {
-  if (!_sql) _sql = neon(connectionString);
-  return _sql;
+// ---- Blob helpers ---------------------------------------------------------
+
+async function blobWrite(order: Order): Promise<void> {
+  await put(keyFor(order.id), JSON.stringify(order), {
+    access: "private",
+    contentType: "application/json",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+  });
 }
 
-// Create the orders table the first time we need it — no manual setup required.
-function ensureTable() {
-  if (!_ready) {
-    _ready = (async () => {
-      await db()`
-        CREATE TABLE IF NOT EXISTS orders (
-          id text PRIMARY KEY,
-          created_at timestamptz NOT NULL DEFAULT now(),
-          customer_name text NOT NULL,
-          phone text NOT NULL,
-          note text NOT NULL DEFAULT '',
-          items jsonb NOT NULL,
-          total integer NOT NULL,
-          status text NOT NULL DEFAULT 'new',
-          deleted_at timestamptz
-        )
-      `;
-    })();
+async function blobReadOne(id: string): Promise<Order | null> {
+  try {
+    const result = await get(keyFor(id), { access: "private" });
+    if (!result || result.statusCode !== 200) return null;
+    const text = await new Response(result.stream).text();
+    return JSON.parse(text) as Order;
+  } catch {
+    return null;
   }
-  return _ready;
 }
 
-function rowToOrder(r: Record<string, unknown>): Order {
-  return {
-    id: String(r.id),
-    createdAt: new Date(r.created_at as string).toISOString(),
-    customerName: String(r.customer_name),
-    phone: String(r.phone),
-    note: (r.note as string) ?? "",
-    items:
-      typeof r.items === "string"
-        ? (JSON.parse(r.items) as OrderItem[])
-        : ((r.items as OrderItem[]) ?? []),
-    total: Number(r.total),
-    status: (r.status as Order["status"]) ?? "new",
-    deletedAt: r.deleted_at ? new Date(r.deleted_at as string).toISOString() : null,
-  };
+async function blobReadAll(): Promise<Order[]> {
+  const { blobs } = await list({ prefix: PREFIX });
+  const orders = await Promise.all(
+    blobs.map(async (b) => {
+      try {
+        const result = await get(b.pathname, { access: "private" });
+        if (!result || result.statusCode !== 200) return null;
+        const text = await new Response(result.stream).text();
+        return JSON.parse(text) as Order;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return orders.filter((o): o is Order => o !== null);
 }
 
 // ---- Local file fallback (development only) -------------------------------
@@ -91,7 +84,7 @@ function rowToOrder(r: Record<string, unknown>): Order {
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "orders.json");
 
-async function readFile(): Promise<Order[]> {
+async function fileReadAll(): Promise<Order[]> {
   try {
     const buf = await fs.readFile(DATA_FILE, "utf8");
     return JSON.parse(buf) as Order[];
@@ -100,7 +93,7 @@ async function readFile(): Promise<Order[]> {
   }
 }
 
-async function writeFile(orders: Order[]): Promise<void> {
+async function fileWriteAll(orders: Order[]): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
   await fs.writeFile(DATA_FILE, JSON.stringify(orders, null, 2), "utf8");
 }
@@ -120,19 +113,12 @@ export async function createOrder(input: NewOrder): Promise<Order> {
     deletedAt: null,
   };
 
-  if (usingDb) {
-    await ensureTable();
-    await db()`
-      INSERT INTO orders (id, created_at, customer_name, phone, note, items, total, status)
-      VALUES (
-        ${order.id}, ${order.createdAt}, ${order.customerName}, ${order.phone},
-        ${order.note}, ${JSON.stringify(order.items)}::jsonb, ${order.total}, ${order.status}
-      )
-    `;
+  if (useBlob) {
+    await blobWrite(order);
   } else {
-    const all = await readFile();
+    const all = await fileReadAll();
     all.push(order);
-    await writeFile(all);
+    await fileWriteAll(all);
   }
 
   return order;
@@ -141,46 +127,35 @@ export async function createOrder(input: NewOrder): Promise<Order> {
 export async function listOrders(
   opts: { includeDeleted?: boolean } = {},
 ): Promise<Order[]> {
-  if (usingDb) {
-    await ensureTable();
-    const rows = (
-      opts.includeDeleted
-        ? await db()`SELECT * FROM orders ORDER BY created_at DESC`
-        : await db()`SELECT * FROM orders WHERE deleted_at IS NULL ORDER BY created_at DESC`
-    ) as Record<string, unknown>[];
-    return rows.map(rowToOrder);
-  }
-
-  const all = (await readFile()).sort((a, b) =>
+  const all = (useBlob ? await blobReadAll() : await fileReadAll()).sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );
   return opts.includeDeleted ? all : all.filter((o) => !o.deletedAt);
+}
+
+async function updateOrder(
+  id: string,
+  change: (order: Order) => Order,
+): Promise<void> {
+  if (useBlob) {
+    const order = await blobReadOne(id);
+    if (order) await blobWrite(change(order));
+    return;
+  }
+  const all = await fileReadAll();
+  const index = all.findIndex((o) => o.id === id);
+  if (index !== -1) all[index] = change(all[index]);
+  await fileWriteAll(all);
 }
 
 export async function setStatus(
   id: string,
   status: "new" | "done",
 ): Promise<void> {
-  if (usingDb) {
-    await ensureTable();
-    await db()`UPDATE orders SET status = ${status} WHERE id = ${id}`;
-    return;
-  }
-  const all = await readFile();
-  const order = all.find((o) => o.id === id);
-  if (order) order.status = status;
-  await writeFile(all);
+  await updateOrder(id, (o) => ({ ...o, status }));
 }
 
 export async function setDeleted(id: string, deleted: boolean): Promise<void> {
-  const ts = deleted ? new Date().toISOString() : null;
-  if (usingDb) {
-    await ensureTable();
-    await db()`UPDATE orders SET deleted_at = ${ts} WHERE id = ${id}`;
-    return;
-  }
-  const all = await readFile();
-  const order = all.find((o) => o.id === id);
-  if (order) order.deletedAt = ts;
-  await writeFile(all);
+  const deletedAt = deleted ? new Date().toISOString() : null;
+  await updateOrder(id, (o) => ({ ...o, deletedAt }));
 }
