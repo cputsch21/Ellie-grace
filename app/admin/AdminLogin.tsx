@@ -22,9 +22,9 @@ export default function AdminLogin() {
 
         <input
           name="password"
-          type="password"
+          type="text"
           autoFocus
-          autoComplete="current-password"
+          autoComplete="off"
           placeholder="Password"
           className="mt-6 w-full rounded-2xl border-0 bg-slate-50 px-4 py-3 text-center text-slate-800 placeholder:text-slate-400 ring-1 ring-transparent transition-shadow duration-150 ease-out focus:bg-white focus:outline-none focus:ring-2 focus:ring-grape-300"
         />
