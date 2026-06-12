@@ -51,9 +51,12 @@ async function blobWrite(order: Order): Promise<void> {
   });
 }
 
+// Reads must bypass the CDN cache (useCache: false): after an overwrite, the
+// cache keeps serving the old version of the order for up to a month, which
+// makes status changes appear to revert in the admin dashboard.
 async function blobReadOne(id: string): Promise<Order | null> {
   try {
-    const result = await get(keyFor(id), { access: "private" });
+    const result = await get(keyFor(id), { access: "private", useCache: false });
     if (!result || result.statusCode !== 200) return null;
     const text = await new Response(result.stream).text();
     return JSON.parse(text) as Order;
@@ -67,7 +70,10 @@ async function blobReadAll(): Promise<Order[]> {
   const orders = await Promise.all(
     blobs.map(async (b) => {
       try {
-        const result = await get(b.pathname, { access: "private" });
+        const result = await get(b.pathname, {
+          access: "private",
+          useCache: false,
+        });
         if (!result || result.statusCode !== 200) return null;
         const text = await new Response(result.stream).text();
         return JSON.parse(text) as Order;
