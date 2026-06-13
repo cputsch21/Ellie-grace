@@ -12,10 +12,12 @@ Orders are cash-only and land on a private, password-protected orders page.
 Go to **your-website-address/admin** and type the password.
 
 - **Password:** `ellieandgrace`
-- New orders show up under the **New** tab. Tap **Mark done** when you've
-  made one, or **Archive** to tuck it away. Nothing is ever truly deleted.
-- The yellow card shows how much money the girls have **earned**, and the
-  purple card shows how much is **still to make**.
+- Each order has two things to keep track of. For the **bracelet**, tap
+  **Not made**, **Made**, or **Delivered** as you go. For the **money**, tap
+  **Paid** or **Not paid**. Use the tabs at the top to see orders by bracelet
+  stage.
+- The three cards show how much money the girls have **earned** (paid orders),
+  how much is **made but not delivered**, and how much is **still to make**.
 
 ### Change the password
 

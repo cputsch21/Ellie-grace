@@ -10,6 +10,9 @@ export type OrderItem = {
   qty: number;
 };
 
+export type BraceletStatus = "not_made" | "made" | "delivered";
+export type PaymentStatus = "not_paid" | "paid";
+
 export type Order = {
   id: string;
   createdAt: string; // ISO timestamp
@@ -18,8 +21,8 @@ export type Order = {
   note: string;
   items: OrderItem[];
   total: number; // whole dollars
-  status: "new" | "done";
-  deletedAt: string | null;
+  bracelet: BraceletStatus;
+  paid: PaymentStatus;
 };
 
 export type NewOrder = {
@@ -40,6 +43,24 @@ const useBlob = Boolean(
 const PREFIX = "orders/";
 const keyFor = (id: string) => `${PREFIX}${id}.json`;
 
+// Stored orders may predate the bracelet/paid fields (they had a single
+// `status` of "new" | "done"). Map any older record onto the current shape so
+// the rest of the app only ever sees the new fields.
+function normalize(raw: unknown): Order {
+  const o = raw as Order & { status?: "new" | "done" };
+  return {
+    id: o.id,
+    createdAt: o.createdAt,
+    customerName: o.customerName,
+    phone: o.phone,
+    note: o.note,
+    items: o.items,
+    total: o.total,
+    bracelet: o.bracelet ?? (o.status === "done" ? "delivered" : "not_made"),
+    paid: o.paid ?? (o.status === "done" ? "paid" : "not_paid"),
+  };
+}
+
 // ---- Blob helpers ---------------------------------------------------------
 
 async function blobWrite(order: Order): Promise<void> {
@@ -59,7 +80,7 @@ async function blobReadOne(id: string): Promise<Order | null> {
     const result = await get(keyFor(id), { access: "private", useCache: false });
     if (!result || result.statusCode !== 200) return null;
     const text = await new Response(result.stream).text();
-    return JSON.parse(text) as Order;
+    return normalize(JSON.parse(text));
   } catch {
     return null;
   }
@@ -76,7 +97,7 @@ async function blobReadAll(): Promise<Order[]> {
         });
         if (!result || result.statusCode !== 200) return null;
         const text = await new Response(result.stream).text();
-        return JSON.parse(text) as Order;
+        return normalize(JSON.parse(text));
       } catch {
         return null;
       }
@@ -93,7 +114,7 @@ const DATA_FILE = path.join(DATA_DIR, "orders.json");
 async function fileReadAll(): Promise<Order[]> {
   try {
     const buf = await fs.readFile(DATA_FILE, "utf8");
-    return JSON.parse(buf) as Order[];
+    return (JSON.parse(buf) as unknown[]).map(normalize);
   } catch {
     return [];
   }
@@ -115,8 +136,8 @@ export async function createOrder(input: NewOrder): Promise<Order> {
     note: input.note,
     items: input.items,
     total: input.total,
-    status: "new",
-    deletedAt: null,
+    bracelet: "not_made",
+    paid: "not_paid",
   };
 
   if (useBlob) {
@@ -130,13 +151,10 @@ export async function createOrder(input: NewOrder): Promise<Order> {
   return order;
 }
 
-export async function listOrders(
-  opts: { includeDeleted?: boolean } = {},
-): Promise<Order[]> {
-  const all = (useBlob ? await blobReadAll() : await fileReadAll()).sort((a, b) =>
+export async function listOrders(): Promise<Order[]> {
+  return (useBlob ? await blobReadAll() : await fileReadAll()).sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );
-  return opts.includeDeleted ? all : all.filter((o) => !o.deletedAt);
 }
 
 async function updateOrder(
@@ -154,14 +172,13 @@ async function updateOrder(
   await fileWriteAll(all);
 }
 
-export async function setStatus(
+export async function setBracelet(
   id: string,
-  status: "new" | "done",
+  bracelet: BraceletStatus,
 ): Promise<void> {
-  await updateOrder(id, (o) => ({ ...o, status }));
+  await updateOrder(id, (o) => ({ ...o, bracelet }));
 }
 
-export async function setDeleted(id: string, deleted: boolean): Promise<void> {
-  const deletedAt = deleted ? new Date().toISOString() : null;
-  await updateOrder(id, (o) => ({ ...o, deletedAt }));
+export async function setPaid(id: string, paid: PaymentStatus): Promise<void> {
+  await updateOrder(id, (o) => ({ ...o, paid }));
 }

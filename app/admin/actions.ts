@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { isAuthed, signIn, signOut } from "@/lib/auth";
-import { setDeleted, setStatus } from "@/lib/orders";
+import type { BraceletStatus, PaymentStatus } from "@/lib/orders";
+import { setBracelet, setPaid } from "@/lib/orders";
 
 export async function loginAction(
   _prev: { error: string } | null,
@@ -25,23 +26,20 @@ async function requireAuth() {
   }
 }
 
-export async function markStatusAction(
+export async function setBraceletAction(
   id: string,
-  status: "new" | "done",
+  bracelet: BraceletStatus,
 ): Promise<void> {
   await requireAuth();
-  await setStatus(id, status);
+  await setBracelet(id, bracelet);
   revalidatePath("/admin");
 }
 
-export async function archiveAction(id: string): Promise<void> {
+export async function setPaidAction(
+  id: string,
+  paid: PaymentStatus,
+): Promise<void> {
   await requireAuth();
-  await setDeleted(id, true);
-  revalidatePath("/admin");
-}
-
-export async function restoreAction(id: string): Promise<void> {
-  await requireAuth();
-  await setDeleted(id, false);
+  await setPaid(id, paid);
   revalidatePath("/admin");
 }

@@ -17,6 +17,6 @@ export default async function AdminPage() {
     return <AdminLogin />;
   }
 
-  const orders = await listOrders({ includeDeleted: true });
+  const orders = await listOrders();
   return <AdminDashboard initialOrders={orders} />;
 }
