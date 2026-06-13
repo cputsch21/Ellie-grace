@@ -4,7 +4,7 @@ import { useOptimistic, useState, useTransition } from "react";
 import type { BraceletStatus, Order, PaymentStatus } from "@/lib/orders";
 import { logoutAction, setBraceletAction, setPaidAction } from "./actions";
 
-type Tab = BraceletStatus;
+type Tab = "open" | "done";
 
 type OptAction =
   | { type: "bracelet"; id: string; bracelet: BraceletStatus }
@@ -52,7 +52,7 @@ export default function AdminDashboard({
 }: {
   initialOrders: Order[];
 }) {
-  const [tab, setTab] = useState<Tab>("not_made");
+  const [tab, setTab] = useState<Tab>("open");
   const [pending, startTransition] = useTransition();
   const [orders, applyOptimistic] = useOptimistic(
     initialOrders,
@@ -71,8 +71,10 @@ export default function AdminDashboard({
   );
 
   const notMade = orders.filter((o) => o.bracelet === "not_made");
-  const made = orders.filter((o) => o.bracelet === "made");
-  const delivered = orders.filter((o) => o.bracelet === "delivered");
+  // An order is "done" once it's fully wrapped up: delivered AND paid.
+  const isDone = (o: Order) => o.bracelet === "delivered" && o.paid === "paid";
+  const doneOrders = orders.filter(isDone);
+  const openOrders = orders.filter((o) => !isDone(o));
 
   // Money already collected, no matter the bracelet stage.
   const earned = orders
@@ -101,12 +103,11 @@ export default function AdminDashboard({
     });
   }
 
-  const list = tab === "not_made" ? notMade : tab === "made" ? made : delivered;
+  const list = tab === "open" ? openOrders : doneOrders;
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: "not_made", label: "Not made", count: notMade.length },
-    { key: "made", label: "Made", count: made.length },
-    { key: "delivered", label: "Delivered", count: delivered.length },
+    { key: "open", label: "Open", count: openOrders.length },
+    { key: "done", label: "Done", count: doneOrders.length },
   ];
 
   return (
@@ -191,11 +192,9 @@ export default function AdminDashboard({
       <div className="mt-5 space-y-4" aria-busy={pending}>
         {list.length === 0 ? (
           <p className="rounded-4xl bg-white/70 p-10 text-center text-slate-500 ring-1 ring-slate-100">
-            {tab === "not_made"
-              ? "Nothing to make right now — new orders show up here! 🌈"
-              : tab === "made"
-                ? "No made bracelets waiting."
-                : "Nothing delivered yet."}
+            {tab === "open"
+              ? "No open orders right now — new ones show up here! 🌈"
+              : "Nothing finished yet."}
           </p>
         ) : (
           list.map((o) => (
