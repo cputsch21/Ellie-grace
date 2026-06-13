@@ -10,11 +10,18 @@ type OptAction =
   | { type: "bracelet"; id: string; bracelet: BraceletStatus }
   | { type: "paid"; id: string; paid: PaymentStatus };
 
-const braceletOptions: { value: BraceletStatus; label: string }[] = [
-  { value: "not_made", label: "Not made" },
-  { value: "made", label: "Made" },
-  { value: "delivered", label: "Delivered" },
+const braceletOptions: {
+  value: BraceletStatus;
+  label: string;
+  active: string;
+}[] = [
+  { value: "not_made", label: "Not made", active: "bg-sky-500 text-white" },
+  { value: "made", label: "Made", active: "bg-sunshine-400 text-slate-900" },
+  { value: "delivered", label: "Delivered", active: "bg-grape-500 text-white" },
 ];
+
+const inactiveBtn =
+  "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50";
 
 function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
@@ -240,21 +247,19 @@ export default function AdminDashboard({
                 </p>
               )}
 
-              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-                <div>
-                  <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Bracelet
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl bg-sky-50/70 p-4 ring-1 ring-sky-100">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-sky-500">
+                    Order
                   </p>
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {braceletOptions.map((opt) => (
                       <button
                         key={opt.value}
                         onClick={() => setBracelet(o.id, opt.value)}
                         disabled={pending}
                         className={`rounded-full px-4 py-2 text-sm font-bold transition-colors duration-150 disabled:opacity-60 ${
-                          o.bracelet === opt.value
-                            ? "bg-slate-800 text-white"
-                            : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                          o.bracelet === opt.value ? opt.active : inactiveBtn
                         }`}
                       >
                         {opt.label}
@@ -262,18 +267,18 @@ export default function AdminDashboard({
                     ))}
                   </div>
                 </div>
-                <div>
-                  <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+                <div className="rounded-3xl bg-emerald-50/70 p-4 ring-1 ring-emerald-100">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-emerald-600">
                     Money
                   </p>
-                  <div className="flex gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     <button
                       onClick={() => setPaid(o.id, "paid")}
                       disabled={pending}
                       className={`rounded-full px-4 py-2 text-sm font-bold transition-colors duration-150 disabled:opacity-60 ${
                         o.paid === "paid"
                           ? "bg-emerald-500 text-white"
-                          : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                          : inactiveBtn
                       }`}
                     >
                       Paid
@@ -283,8 +288,8 @@ export default function AdminDashboard({
                       disabled={pending}
                       className={`rounded-full px-4 py-2 text-sm font-bold transition-colors duration-150 disabled:opacity-60 ${
                         o.paid === "not_paid"
-                          ? "bg-slate-800 text-white"
-                          : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                          ? "bg-bubblegum-500 text-white"
+                          : inactiveBtn
                       }`}
                     >
                       Not paid
