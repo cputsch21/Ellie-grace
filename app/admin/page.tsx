@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { isAuthed } from "@/lib/auth";
 import { listOrders } from "@/lib/orders";
+import { listMessages } from "@/lib/chat";
 import AdminLogin from "./AdminLogin";
 import AdminDashboard from "./AdminDashboard";
+import ChatWidget from "@/components/ChatWidget";
 
 export const metadata: Metadata = {
   title: "Orders — Ellie & Grace",
@@ -17,6 +19,14 @@ export default async function AdminPage() {
     return <AdminLogin />;
   }
 
-  const orders = await listOrders();
-  return <AdminDashboard initialOrders={orders} />;
+  const [orders, messages] = await Promise.all([
+    listOrders(),
+    listMessages(),
+  ]);
+  return (
+    <>
+      <AdminDashboard initialOrders={orders} />
+      <ChatWidget initialMessages={messages} />
+    </>
+  );
 }

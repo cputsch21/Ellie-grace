@@ -18,6 +18,9 @@ Go to **your-website-address/admin** and type the password.
   stage.
 - The three cards show how much money the girls have **earned** (paid orders),
   how much is **made but not delivered**, and how much is **still to make**.
+- Tap the **😊 button** in the bottom-right corner to open the partner chat.
+  Type your name once (it's remembered on that device) and Ellie & Grace can
+  message each other right there while they work.
 
 ### Change the password
 
